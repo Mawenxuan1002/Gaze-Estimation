@@ -1,9 +1,9 @@
-﻿FROM python:3.10-slim
+﻿FROM docker.m.daocloud.io/library/python:3.10-slim
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -11,10 +11,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# Copy .pyc files and config
-COPY *.pyc ./
+COPY *.py ./
 COPY rooms.json .
 COPY models/ ./models/
 
@@ -23,6 +22,4 @@ RUN mkdir -p /app/status /app/outputs
 ENV DEMO_PORT=8081
 ENV ROOMS_CONFIG=/app/rooms.json
 
-EXPOSE ${DEMO_PORT}
-
-CMD ["python", "multi_stream.pyc"]
+CMD ["python", "multi_stream.py"]
