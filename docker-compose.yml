@@ -1,0 +1,18 @@
+﻿version: '3.8'
+
+services:
+  gaze-tracker:
+    build: .
+    container_name: gaze-tracker
+    restart: unless-stopped
+    ports:
+      - "${DEMO_PORT:-8081}:8081"
+    volumes:
+      - ./rooms.json:/app/rooms.json
+      - ./outputs:/app/outputs
+    environment:
+      - DEMO_PORT=8081
+      - API_URL=http://192.168.1.90:8081
+      - GAZE_USERNAME=admin
+      - GAZE_PASSWORD=admin123
+    network_mode: host

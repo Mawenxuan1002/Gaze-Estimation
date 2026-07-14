@@ -1,0 +1,6 @@
+﻿*.pyc
+__pycache__/
+outputs/
+status/
+calib_config.json
+*.tar

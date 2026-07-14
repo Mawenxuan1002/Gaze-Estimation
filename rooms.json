@@ -1,0 +1,15 @@
+﻿{
+    "global": {
+        "ear_threshold": 0.2,
+        "width": 640,
+        "push_interval": 10,
+        "api_url": "http://192.168.1.90:8081",
+        "username": "admin",
+        "password": "admin123",
+        "away_duration": 3.0,
+        "drowsy_duration": 2.0
+    },
+    "rooms": [
+        {"room_no": "002", "device_id": "5", "rtsp_url": "rtsp://192.168.1.97:8554/live/wykj001"}
+    ]
+}
