@@ -8,15 +8,16 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libgles2-mesa \
+    libegl1 \
+    libgles2 \
+    libegl-mesa0 \
+    && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-COPY *.py ./
-COPY rooms.json .
-COPY models/ ./models/
+COPY . .
 
 RUN mkdir -p /app/status /app/outputs
 

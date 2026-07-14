@@ -1,0 +1,9 @@
+﻿.git
+__pycache__
+*.zip
+*.tar
+*.tar.gz
+Dockerfile
+docker-compose.yml
+build.sh
+build.bat
