@@ -65,7 +65,7 @@ class DemoHandler(BaseHTTPRequestHandler):
         device_id = key.get('deviceId', '')
 
         if not all([rtsp_url, room_no, device_id]):
-            self._json_response({'code': 0, 'msg': 'Missing rtspUrl, roomNo or deviceId'})
+            self._json_response({'code': 0, 'msg': '缺少摄像头地址或房间参数'})
             return
 
         global_config = self._load_global_config()
@@ -89,7 +89,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                     del workers[room_no]
                     self._json_response({'code': 1, 'msg': 'Stopped'})
                     return
-        self._json_response({'code': 0, 'msg': 'Room not found'})
+        self._json_response({'code': 0, 'msg': '房间未找到'})
 
     def _handle_config(self, data):
         api_url = data.get('api_url', '')
@@ -122,7 +122,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                 if worker.rtsp_url == rtsp_url:
                     self._json_response({'code': 1, 'msg': 'running', 'room_no': room_no})
                     return
-        self._json_response({'code': 0, 'msg': 'not_found'})
+        self._json_response({'code': 0, 'msg': '未找到'})
 
     def _get_rooms(self):
         with workers_lock:
@@ -262,5 +262,6 @@ def start_demo_server(port=None):
 
 if __name__ == '__main__':
     start_demo_server()
+
 
 
