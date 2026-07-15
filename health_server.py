@@ -42,10 +42,12 @@ class DemoHandler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            if path == '/api/start':
+            if path == '/api/start' or path == '/analyze_start':
                 self._handle_start(data)
-            elif path == '/api/stop':
+            elif path == '/api/stop' or path == '/analyze_end':
                 self._handle_stop(data)
+            elif path == '/analyze_status':
+                self._handle_status(data)
             elif path == '/api/config':
                 self._handle_config(data)
             else:
@@ -112,6 +114,15 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._json_response({'code': 200, 'msg': 'Config updated'})
         else:
             self._json_response({'code': 400, 'msg': 'Missing api_url'})
+
+    def _handle_status(self, data):
+        rtsp_url = data.get('rtspUrl', '')
+        with workers_lock:
+            for room_no, worker in workers.items():
+                if worker.rtsp_url == rtsp_url:
+                    self._json_response({'code': 200, 'msg': 'running', 'room_no': room_no})
+                    return
+        self._json_response({'code': 200, 'msg': 'not_found'})
 
     def _get_rooms(self):
         with workers_lock:
@@ -243,10 +254,12 @@ def start_demo_server(port=None):
         port = DEMO_PORT
     server = ThreadingHTTPServer(('0.0.0.0', port), DemoHandler)
     print('Demo: http://0.0.0.0:{}'.format(port))
-    print('API: POST /api/start - Start room')
-    print('API: POST /api/stop - Stop room')
+    print('API: POST /api/start or /analyze_start - Start room')
+    print('API: POST /api/stop or /analyze_end - Stop room')
+    print('API: POST /analyze_status - Check status')
     print('API: GET /api/rooms - List rooms')
     server.serve_forever()
 
 if __name__ == '__main__':
     start_demo_server()
+
