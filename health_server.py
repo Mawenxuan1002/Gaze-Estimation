@@ -11,6 +11,8 @@ DEMO_PORT = int(os.environ.get('DEMO_PORT', '8081'))
 
 # Active workers
 workers = {}
+capture_cache = {}
+capture_lock = threading.Lock()
 workers_lock = threading.Lock()
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -29,6 +31,19 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._stream_video(room_no)
             elif path == '/api/rooms':
                 self._json_response(self._get_rooms())
+            elif path.startswith('/capture/'):
+                room_no = path.split('/')[2]
+                with capture_lock:
+                    img = capture_cache.get(room_no)
+                if img:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(img)
+                else:
+                    self.send_response(404)
+                    self.end_headers()
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -262,6 +277,7 @@ def start_demo_server(port=None):
 
 if __name__ == '__main__':
     start_demo_server()
+
 
 
 

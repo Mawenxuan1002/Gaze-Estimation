@@ -110,8 +110,11 @@ class StreamWorker:
                 if now - last_alert_time >= alert_interval:
                     event = analyzer.analyze(result)
                     if event and event[2] in ('中', '高'):
-                        if pusher.push_frame_result(result):
+                        if pusher.push_frame_result(result, frame):
                             total_pushes += 1
+                            _, _cap_buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                            with capture_lock:
+                                capture_cache[self.room_no] = _cap_buf.tobytes()
                             last_alert_time = now
                             logger.info("[{}] Alert: {} - {}".format(self.room_no, event[0], event[1]))
                 
@@ -134,3 +137,5 @@ class StreamWorker:
 def get_frame(room_no):
     with frame_lock:
         return frame_cache.get(room_no)
+
+

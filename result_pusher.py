@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-import json, os, time, threading, logging
+import json, os, time, threading, logging, base64, cv2
 from datetime import datetime
 from urllib import request as urllib_request
 
@@ -105,7 +105,7 @@ class ResultPusher:
     def _build_key(self):
         return json.dumps({"roomNo": self.room_no, "deviceId": self.device_id}, ensure_ascii=False)
 
-    def _do_push(self, behavior_type, behavior_desc, severity):
+    def _do_push(self, behavior_type, behavior_desc, severity, frame=None):
         token = self._get_token()
         if not token:
             return
@@ -130,7 +130,7 @@ class ResultPusher:
         except Exception as e:
             logger.error("[{}] Push failed: {}".format(self.room_no, e))
 
-    def push_frame_result(self, result):
+    def push_frame_result(self, result, frame=None):
         now = time.time()
         if now - self._last_push_time < self.push_interval:
             return False
@@ -142,7 +142,7 @@ class ResultPusher:
             return False
         self._last_push_time = now
         self._push_count += 1
-        threading.Thread(target=self._do_push, args=(behavior_type, behavior_desc, severity), daemon=True).start()
+        threading.Thread(target=self._do_push, args=(behavior_type, behavior_desc, severity, frame), daemon=True).start()
         return True
 
     def test_push(self):
@@ -150,3 +150,4 @@ class ResultPusher:
 
     def get_stats(self):
         return {"push_count": self._push_count}
+
