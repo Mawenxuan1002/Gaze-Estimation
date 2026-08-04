@@ -6,6 +6,7 @@ from datetime import datetime
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from stream_worker import get_frame, stats_cache, stats_lock, StreamWorker
+from stream_identity import make_stream_id, parse_platform_key
 
 DEMO_PORT = int(os.environ.get('DEMO_PORT', '8081'))
 
@@ -59,10 +60,8 @@ class DemoHandler(BaseHTTPRequestHandler):
     def _handle_start(self, data):
         rtsp_url = data.get('rtspUrl', '')
         key = data.get('key', '{}')
-        if isinstance(key, str):
-            key = json.loads(key)
-        room_no = key.get('roomNo', '')
-        device_id = key.get('deviceId', '')
+        room_no, device_id = parse_platform_key(key)
+        stream_id = make_stream_id(room_no, device_id)
 
         if not all([rtsp_url, room_no, device_id]):
             self._json_response({'code': 0, 'msg': '缺少摄像头地址或房间参数'})
@@ -72,26 +71,31 @@ class DemoHandler(BaseHTTPRequestHandler):
         config = {**global_config, 'rtsp_url': rtsp_url}
         
         with workers_lock:
-            old_worker = workers.get(room_no)
+            old_worker = workers.get(stream_id)
         if old_worker and not old_worker.stop(timeout=5.0):
             self._json_response({'code': 0, 'msg': '旧任务停止超时，请稍后重试'})
             return
 
         with workers_lock:
-            if workers.get(room_no) is not old_worker:
+            if workers.get(stream_id) is not old_worker:
                 self._json_response({'code': 0, 'msg': '房间任务已被其他请求更新，请重试'})
                 return
             worker = StreamWorker(room_no, device_id, rtsp_url, config)
             worker.start()
-            workers[room_no] = worker
+            workers[stream_id] = worker
 
         self._json_response({'code': 1, 'msg': 'Started', 'startTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
 
     def _handle_stop(self, data):
         rtsp_url = data.get('rtspUrl', '')
+        requested_stream_id = self._stream_id_from_optional_key(data.get('key'))
         with workers_lock:
-            for room_no, worker in list(workers.items()):
-                if worker.rtsp_url == rtsp_url:
+            for stream_id, worker in list(workers.items()):
+                if requested_stream_id:
+                    matched = stream_id == requested_stream_id
+                else:
+                    matched = worker.rtsp_url == rtsp_url
+                if matched:
                     break
             else:
                 self._json_response({'code': 0, 'msg': '房间未找到'})
@@ -101,8 +105,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._json_response({'code': 0, 'msg': '任务停止超时'})
             return
         with workers_lock:
-            if workers.get(room_no) is worker:
-                del workers[room_no]
+            if workers.get(stream_id) is worker:
+                del workers[stream_id]
         self._json_response({'code': 1, 'msg': 'Stopped', 'endTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
 
     def _handle_config(self, data):
@@ -131,14 +135,21 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _handle_status(self, data):
         rtsp_url = data.get('rtspUrl', '')
+        requested_stream_id = self._stream_id_from_optional_key(data.get('key'))
         with workers_lock:
-            for room_no, worker in workers.items():
-                if worker.rtsp_url == rtsp_url:
+            for stream_id, worker in workers.items():
+                if requested_stream_id:
+                    matched = stream_id == requested_stream_id
+                else:
+                    matched = worker.rtsp_url == rtsp_url
+                if matched:
                     status = worker.get_status()
                     self._json_response({
                         'code': 1 if status['alive'] else 0,
                         'msg': status['status'],
-                        'room_no': room_no,
+                        'stream_id': stream_id,
+                        'room_no': worker.room_no,
+                        'device_id': worker.device_id,
                         'last_error': status['last_error'],
                     })
                     return
@@ -147,10 +158,11 @@ class DemoHandler(BaseHTTPRequestHandler):
     def _get_rooms(self):
         with workers_lock:
             rooms = {}
-            for room_no, worker in workers.items():
+            for stream_id, worker in workers.items():
                 worker_status = worker.get_status()
-                rooms[room_no] = {
-                    'room_no': room_no,
+                rooms[stream_id] = {
+                    'stream_id': stream_id,
+                    'room_no': worker.room_no,
                     'device_id': worker.device_id,
                     'rtsp_url': worker.rtsp_url,
                     'status': worker_status['status'],
@@ -166,6 +178,14 @@ class DemoHandler(BaseHTTPRequestHandler):
                 config = json.load(f)
                 return config.get('global', {})
         return {}
+
+    def _stream_id_from_optional_key(self, key):
+        if key in (None, '', {}):
+            return None
+        room_no, device_id = parse_platform_key(key)
+        if not room_no or not device_id:
+            return None
+        return make_stream_id(room_no, device_id)
 
     def _json_response(self, data):
         self.send_response(200)

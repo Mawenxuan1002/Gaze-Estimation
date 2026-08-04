@@ -11,6 +11,7 @@ import cv2
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gaze_detector import GazeTracker
 from result_pusher import BehaviorAnalyzer, ResultPusher
+from stream_identity import make_stream_id
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class StreamWorker:
     def __init__(self, room_no, device_id, rtsp_url, config=None):
         self.room_no = room_no
         self.device_id = device_id
+        self.stream_id = make_stream_id(room_no, device_id)
         self.rtsp_url = rtsp_url
         self.config = config or {}
         self._stop_event = threading.Event()
@@ -54,7 +56,7 @@ class StreamWorker:
         self._set_state("starting")
         self._thread = threading.Thread(
             target=self._run,
-            name="stream-{}".format(self.room_no),
+            name="stream-{}".format(self.stream_id),
             daemon=True,
         )
         self._thread.start()
@@ -157,8 +159,10 @@ class StreamWorker:
                     head_down_seconds = analyzer.get_head_down_duration(result.timestamp)
                     push_stats = pusher.get_stats()
                     worker_status = self.get_status()
-                    update_stats(self.room_no, {
+                    update_stats(self.stream_id, {
+                        "stream_id": self.stream_id,
                         "room_no": self.room_no,
+                        "device_id": self.device_id,
                         "status": worker_status["status"],
                         "alive": worker_status["alive"],
                         "last_error": worker_status["last_error"],
@@ -183,7 +187,7 @@ class StreamWorker:
                     encoded, jpeg = cv2.imencode(".jpg", frame)
                     if encoded:
                         with frame_lock:
-                            frame_cache[self.room_no] = jpeg.tobytes()
+                            frame_cache[self.stream_id] = jpeg.tobytes()
 
                 except Exception as e:
                     message = str(e)
@@ -208,8 +212,8 @@ class StreamWorker:
 
             status = self.get_status()
             push_stats = pusher.get_stats()
-            previous = get_stats(self.room_no)
-            update_stats(self.room_no, {
+            previous = get_stats(self.stream_id)
+            update_stats(self.stream_id, {
                 **previous,
                 **push_stats,
                 "status": status["status"],

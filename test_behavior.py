@@ -11,9 +11,11 @@ import numpy as np
 
 from head_pose import rotation_matrix_to_head_angles
 from result_pusher import BehaviorAnalyzer, ResultPusher, SeverityLevel
+from stream_identity import make_stream_id, parse_platform_key
 
 with patch.dict(sys.modules, {"gaze_detector": SimpleNamespace(GazeTracker=object)}):
     from stream_worker import StreamWorker
+    import health_server
 
 
 def frame(timestamp, ratio, face_detected=True, head_yaw=0.0):
@@ -33,6 +35,66 @@ def axis_rotation(axis, degrees):
     if axis == "y":
         return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+class StreamIdentityTests(unittest.TestCase):
+    class FakeWorker:
+        def __init__(self, room_no, device_id, rtsp_url, config):
+            self.room_no = room_no
+            self.device_id = device_id
+            self.rtsp_url = rtsp_url
+            self.config = config
+            self.started = False
+
+        def start(self):
+            self.started = True
+            return True
+
+        def stop(self, timeout=5.0):
+            return True
+
+    def setUp(self):
+        health_server.workers.clear()
+        self.responses = []
+        self.handler = object.__new__(health_server.DemoHandler)
+        self.handler._load_global_config = lambda: {}
+        self.handler._json_response = self.responses.append
+
+    def tearDown(self):
+        health_server.workers.clear()
+
+    def test_parses_platform_key_string_and_object(self):
+        raw = '{"roomNo":"002","deviceId":"5"}'
+        self.assertEqual(parse_platform_key(raw), ("002", "5"))
+        self.assertEqual(
+            parse_platform_key({"roomNo": "002", "deviceId": "5"}),
+            ("002", "5"),
+        )
+
+    def test_same_room_different_devices_have_distinct_stream_ids(self):
+        self.assertNotEqual(
+            make_stream_id("002", "5"),
+            make_stream_id("002", "6"),
+        )
+        self.assertEqual(make_stream_id("002", "5"), "002~5")
+
+    def test_start_uses_platform_identity_and_keeps_devices_separate(self):
+        with patch.object(health_server, "StreamWorker", self.FakeWorker):
+            self.handler._handle_start({
+                "rtspUrl": "rtsp://camera/5",
+                "key": '{"roomNo":"002","deviceId":"5"}',
+            })
+            self.handler._handle_start({
+                "rtspUrl": "rtsp://camera/6",
+                "key": {"roomNo": "002", "deviceId": "6"},
+            })
+
+        self.assertEqual(set(health_server.workers), {"002~5", "002~6"})
+        self.assertEqual(health_server.workers["002~5"].room_no, "002")
+        self.assertEqual(health_server.workers["002~5"].device_id, "5")
+        self.assertEqual(health_server.workers["002~6"].device_id, "6")
+        self.assertTrue(all(worker.started for worker in health_server.workers.values()))
+        self.assertEqual([response["code"] for response in self.responses], [1, 1])
 
 
 class HeadPoseTests(unittest.TestCase):
@@ -190,6 +252,13 @@ class StubResultPusher(ResultPusher):
 
 
 class ResultPusherTests(unittest.TestCase):
+    def test_build_key_preserves_platform_identity(self):
+        pusher = ResultPusher(room_no="room-A", device_id="camera-9")
+        self.assertEqual(
+            parse_platform_key(pusher._build_key()),
+            ("room-A", "camera-9"),
+        )
+
     def wait_for_completion(self, pusher):
         deadline = time.time() + 1.0
         while pusher.get_stats()["push_pending"] and time.time() < deadline:

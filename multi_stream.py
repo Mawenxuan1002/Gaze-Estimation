@@ -3,6 +3,7 @@ import os, sys, json, logging, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from stream_worker import StreamWorker
 from health_server import start_demo_server, workers, workers_lock
+from stream_identity import make_stream_id
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def main():
         worker = StreamWorker(room_no, device_id, rtsp_url, merged)
         worker.start()
         with workers_lock:
-            workers[room_no] = worker
+            workers[make_stream_id(room_no, device_id)] = worker
         logger.info('Started room {}'.format(room_no))
     
     logger.info('Demo: http://localhost:{}'.format(DEMO_PORT))

@@ -12,10 +12,5 @@
     "password": ""
   },
   "rooms": [
-    {
-      "room_no": "001",
-      "device_id": "1",
-      "rtsp_url": "rtsp://camera.example.com/live/stream"
-    }
   ]
 }
