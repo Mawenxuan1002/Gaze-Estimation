@@ -1,4 +1,4 @@
-﻿FROM docker.m.daocloud.io/library/python:3.10-slim
+FROM docker.m.daocloud.io/library/python:3.10-slim
 
 WORKDIR /app
 
@@ -17,11 +17,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-COPY . .
+COPY gaze_tracker ./gaze_tracker
+COPY models ./models
+COPY config ./config
 
 RUN mkdir -p /app/status /app/outputs
 
-ENV DEMO_PORT=8081
-ENV ROOMS_CONFIG=/app/rooms.json
+ENV DEMO_PORT=8081 \
+    GAZE_CONFIG=/app/config/rooms.json \
+    GAZE_CALIBRATION=/app/config/calib_config.json \
+    GAZE_MODEL=/app/models/face_landmarker.task
 
-CMD ["python", "multi_stream.py"]
+CMD ["python", "-m", "gaze_tracker"]

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   gaze-tracker:
     build: .
@@ -8,10 +6,12 @@ services:
     ports:
       - "${DEMO_PORT:-8081}:8081"
     volumes:
-      - ./rooms.json:/app/rooms.json
+      - ./config:/app/config
       - ./outputs:/app/outputs
     environment:
-      - DEMO_PORT=8081
-      - API_URL=${API_URL:-http://platform.example.com:8081}
-      - GAZE_USERNAME=${GAZE_USERNAME:-admin}
-      - GAZE_PASSWORD=${GAZE_PASSWORD:-}
+      DEMO_PORT: 8081
+      API_URL: ${API_URL:-http://platform.example.com:8081}
+      GAZE_USERNAME: ${GAZE_USERNAME:-admin}
+      GAZE_PASSWORD: ${GAZE_PASSWORD:-}
+      GAZE_CONFIG: /app/config/rooms.json
+      GAZE_CALIBRATION: /app/config/calib_config.json

@@ -1,9 +1,12 @@
 ﻿# -*- coding: utf-8 -*-
-import os, sys, json, logging, time
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from stream_worker import StreamWorker
-from health_server import start_demo_server, workers, workers_lock
-from stream_identity import make_stream_id
+import json
+import logging
+import os
+
+from .identity import make_stream_id
+from .paths import config_path
+from .server import start_demo_server, workers, workers_lock
+from .worker import StreamWorker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -11,12 +14,12 @@ logger = logging.getLogger(__name__)
 DEMO_PORT = int(os.environ.get('DEMO_PORT', '8081'))
 
 def main():
-    config_path = os.path.join(os.path.dirname(__file__), 'rooms.json')
-    if not os.path.exists(config_path):
-        logger.error('Config not found')
-        sys.exit(1)
+    path = config_path()
+    if not path.exists():
+        logger.error('Config not found: %s', path)
+        return 1
     
-    with open(config_path, 'r', encoding='utf-8-sig') as f:
+    with path.open('r', encoding='utf-8-sig') as f:
         config = json.load(f)
     
     global_config = config.get('global', {})
@@ -45,4 +48,4 @@ def main():
                 w.stop(timeout=5.0)
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

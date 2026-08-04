@@ -3,10 +3,9 @@ import json, os, time, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from datetime import datetime
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from stream_worker import get_frame, stats_cache, stats_lock, StreamWorker
-from stream_identity import make_stream_id, parse_platform_key
+from .identity import make_stream_id, parse_platform_key
+from .paths import config_path
+from .worker import get_frame, stats_cache, stats_lock, StreamWorker
 
 DEMO_PORT = int(os.environ.get('DEMO_PORT', '8081'))
 
@@ -114,10 +113,10 @@ class DemoHandler(BaseHTTPRequestHandler):
         username = data.get('username', '')
         password = data.get('password', '')
         if api_url:
-            config_path = os.path.join(os.path.dirname(__file__), 'rooms.json')
+            path = config_path()
             config = {}
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8-sig') as f:
+            if path.exists():
+                with path.open('r', encoding='utf-8-sig') as f:
                     config = json.load(f)
             if 'global' not in config:
                 config['global'] = {}
@@ -127,7 +126,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                 config['global']['username'] = username
             if password:
                 config['global']['password'] = password
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with path.open('w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
             self._json_response({'code': 200, 'msg': 'Config updated'})
         else:
@@ -172,9 +171,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             return {'code': 200, 'data': rooms}
 
     def _load_global_config(self):
-        config_path = os.path.join(os.path.dirname(__file__), 'rooms.json')
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8-sig') as f:
+        path = config_path()
+        if path.exists():
+            with path.open('r', encoding='utf-8-sig') as f:
                 config = json.load(f)
                 return config.get('global', {})
         return {}

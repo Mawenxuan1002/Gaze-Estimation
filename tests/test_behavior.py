@@ -9,13 +9,13 @@ from unittest.mock import patch
 
 import numpy as np
 
-from head_pose import rotation_matrix_to_head_angles
-from result_pusher import BehaviorAnalyzer, ResultPusher, SeverityLevel
-from stream_identity import make_stream_id, parse_platform_key
+from gaze_tracker.head_pose import rotation_matrix_to_head_angles
+from gaze_tracker.identity import make_stream_id, parse_platform_key
+from gaze_tracker.pusher import BehaviorAnalyzer, ResultPusher, SeverityLevel
 
-with patch.dict(sys.modules, {"gaze_detector": SimpleNamespace(GazeTracker=object)}):
-    from stream_worker import StreamWorker
-    import health_server
+with patch.dict(sys.modules, {"gaze_tracker.detector": SimpleNamespace(GazeTracker=object)}):
+    from gaze_tracker.worker import StreamWorker
+    from gaze_tracker import server as health_server
 
 
 def frame(timestamp, ratio, face_detected=True, head_yaw=0.0):

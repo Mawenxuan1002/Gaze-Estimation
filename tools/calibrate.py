@@ -1,24 +1,24 @@
 ﻿"""
-gaze_calibrate.py  -  启动校准模式
+交互式视线校准工具
 =================
 启动后依次注视屏幕 四角 + 中心 五个点, 自动采集虹膜坐标
-输出个性化校准参数, 写入 calib_config.json
+输出个性化校准参数, 写入 config/calib_config.json
 
-运行:  python gaze_calibrate.py [--camera 0]
+运行: python -m tools.calibrate [--camera 0]
 """
 
 import json, os, sys, time
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import argparse
 import cv2
 import numpy as np
 import mediapipe as mp
-from gaze_detector import (
+from gaze_tracker.detector import (
     GazeTracker, compute_gaze_offset,
     L_EYE, R_EYE, L_IRIS_CENTER, R_IRIS_CENTER,
 )
+from gaze_tracker.paths import calibration_path
 
 CALIB_POINTS = [
     ("左上", 0.15, 0.15),
@@ -162,13 +162,14 @@ def main():
         return
 
     # 保存
-    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calib_config.json")
-    with open(out_path, "w", encoding="utf-8") as f:
+    out_path = calibration_path()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
         json.dump(calib_data, f, ensure_ascii=False, indent=2)
 
     print(f"\n[校准] 完成! 共校准 {len(calib_data)}/{total} 个点")
     print(f"[校准] 参数已保存: {out_path}")
-    print(f"[校准] 重启 main.py 时将自动加载校准参数")
+    print("[校准] 重启 gaze_tracker 服务后将自动加载校准参数")
 
 
 if __name__ == "__main__":

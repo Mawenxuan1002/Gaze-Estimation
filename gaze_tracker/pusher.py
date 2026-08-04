@@ -2,13 +2,11 @@
 import json
 import logging
 import os
-import sys
 import threading
 import time
 from datetime import datetime
 from urllib import request as urllib_request
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logger = logging.getLogger(__name__)
 

@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-import sys
 import threading
 import time
 from datetime import datetime
 
 import cv2
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gaze_detector import GazeTracker
-from result_pusher import BehaviorAnalyzer, ResultPusher
-from stream_identity import make_stream_id
+from .detector import GazeTracker
+from .identity import make_stream_id
+from .pusher import BehaviorAnalyzer, ResultPusher
 
 logger = logging.getLogger(__name__)
 

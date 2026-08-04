@@ -23,7 +23,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-from head_pose import rotation_matrix_to_head_angles
+from .head_pose import rotation_matrix_to_head_angles
+from .paths import calibration_path, model_path
 from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python.vision import (
     FaceLandmarker,
@@ -251,7 +252,7 @@ class DrowsinessDetector:
 
 def load_calibration(path=None):
     if path is None:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calib_config.json")
+        path = calibration_path()
     if not os.path.exists(path):
         return None
     try:
@@ -295,15 +296,12 @@ class GazeTracker:
     def __init__(self, max_faces=1, min_detection_confidence=0.5,
                  min_tracking_confidence=0.5, ear_threshold=0.20,
                  use_calibration=True):
-        model_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "models", "face_landmarker.task"
-        )
-        if not os.path.exists(model_path):
-            raise FileNotFoundError("模型文件不存在: " + model_path)
+        model_file = model_path()
+        if not model_file.exists():
+            raise FileNotFoundError("模型文件不存在: " + str(model_file))
 
         options = FaceLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=model_path),
+            base_options=BaseOptions(model_asset_path=str(model_file)),
             running_mode=RunningMode.VIDEO,
             num_faces=max_faces,
             min_face_detection_confidence=min_detection_confidence,

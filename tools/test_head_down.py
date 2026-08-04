@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """使用本地摄像头手工验证低头比例和持续时间判定。"""
 import os
-import sys
 import time
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import cv2
 
-from gaze_detector import GazeTracker
-from result_pusher import BehaviorAnalyzer
+from gaze_tracker.detector import GazeTracker
+from gaze_tracker.pusher import BehaviorAnalyzer
 
 RATIO_DELTA = 0.10
 DURATION_SECONDS = 3.0
