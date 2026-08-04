@@ -41,7 +41,7 @@ def main():
     except KeyboardInterrupt:
         with workers_lock:
             for w in workers.values():
-                w.stop()
+                w.stop(timeout=5.0)
 
 if __name__ == '__main__':
     main()

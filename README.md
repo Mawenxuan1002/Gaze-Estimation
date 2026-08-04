@@ -34,22 +34,22 @@ RTSP摄像头 → 视线检测程序 → 行为分析 → 推送告警 → 监�
 ## 三、平台接入
 
 ### 3.1 平台信息
-- **平台地址**: http://192.168.1.90/rsdl (智慧看管研判系统)
-- **API网关**: http://192.168.1.90:8081
-- **登录账号**: admin / admin123
+- **平台地址**: 按部署环境配置
+- **API网关**: http://platform.example.com:8081
+- **登录账号**: 通过 `GAZE_USERNAME` / `GAZE_PASSWORD` 环境变量配置
 
 ### 3.2 关键接口
 
 #### 登录认证
 ```
-POST http://192.168.1.90:8081/auth/login
-Body: {"username":"admin", "password":"admin123"}
+POST http://platform.example.com:8081/auth/login
+Body: {"username":"admin", "password":"<password>"}
 Response: {"code":200, "data":{"access_token":"eyJ...", "expires_in":1440}}
 ```
 
 #### 告警推送（核心接口）
 ```
-POST http://192.168.1.90:8081/wuyu-statistics/statistics/electronLog/result
+POST http://platform.example.com:8081/wuyu-statistics/statistics/electronLog/result
 Authorization: Bearer {token}
 Content-Type: application/json
 
@@ -76,7 +76,7 @@ Content-Type: application/json
 
 ### 3.3 设备配置
 - **房间号**: roomNo = "002"
-- **设备ID**: deviceId = "5"
+- **设备ID**: deviceId = 平台注册的设备 ID
 - **说明**: 必须使用平台已注册的房间和设备，否则推送失败
 
 ---
@@ -101,12 +101,12 @@ Content-Type: application/json
 ### config.json
 ```json
 {
-    "rtsp": "rtsp://192.168.1.97:8554/live/wykj001",
+    "rtsp": "rtsp://camera.example.com/live/stream",
     "width": 640,
     "earThreshold": 0.2,
-    "apiUrl": "http://192.168.1.90:8081",
+    "apiUrl": "http://platform.example.com:8081",
     "username": "admin",
-    "password": "admin123",
+    "password": "",
     "pushInterval": 10,
     "roomNo": "002",
     "deviceId": "5",
@@ -134,7 +134,7 @@ Content-Type: application/json
 python web_viewer.py
 ```
 - 访问地址: http://localhost:5000
-- 局域网访问: http://192.168.1.108:5000
+- 局域网访问: http://<server-ip>:5000
 - 功能: 实时画面 + 状态显示 + 自动推送
 
 ### 6.2 命令行模式
@@ -153,8 +153,8 @@ python gaze_calibrate.py
 
 ## 七、平台查看告警
 
-1. 打开 http://192.168.1.90/rsdl
-2. 登录（admin/admin123）
+1. 打开部署环境中的平台地址
+2. 使用部署环境账号登录
 3. 进入"告警列表"
 4. 查看最新告警记录
 
@@ -190,7 +190,7 @@ python gaze_calibrate.py
 ## 九、常见问题
 
 ### Q1: 推送后平台看不到告警
-A: 检查roomNo和deviceId是否为平台已注册设备（002/5可用）
+A: 检查 roomNo 和 deviceId 是否为平台已注册设备
 
 ### Q2: 读取帧失败
 A: RTSP流不稳定，程序会自动重连；降低width到640可改善
@@ -199,4 +199,4 @@ A: RTSP流不稳定，程序会自动重连；降低width到640可改善
 A: 调高earThreshold（如0.25）或增大drowsyDuration
 
 ### Q4: ping不通本机
-A: 防火墙已关闭，直接用浏览器访问http://192.168.1.108:5000
+A: 检查防火墙和监听地址，再访问 http://<server-ip>:5000

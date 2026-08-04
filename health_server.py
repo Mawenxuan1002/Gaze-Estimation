@@ -11,8 +11,6 @@ DEMO_PORT = int(os.environ.get('DEMO_PORT', '8081'))
 
 # Active workers
 workers = {}
-capture_cache = {}
-capture_lock = threading.Lock()
 workers_lock = threading.Lock()
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -31,19 +29,6 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._stream_video(room_no)
             elif path == '/api/rooms':
                 self._json_response(self._get_rooms())
-            elif path.startswith('/capture/'):
-                room_no = path.split('/')[2]
-                with capture_lock:
-                    img = capture_cache.get(room_no)
-                if img:
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'image/jpeg')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(img)
-                else:
-                    self.send_response(404)
-                    self.end_headers()
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -87,24 +72,38 @@ class DemoHandler(BaseHTTPRequestHandler):
         config = {**global_config, 'rtsp_url': rtsp_url}
         
         with workers_lock:
-            if room_no in workers:
-                workers[room_no].stop()
+            old_worker = workers.get(room_no)
+        if old_worker and not old_worker.stop(timeout=5.0):
+            self._json_response({'code': 0, 'msg': '旧任务停止超时，请稍后重试'})
+            return
+
+        with workers_lock:
+            if workers.get(room_no) is not old_worker:
+                self._json_response({'code': 0, 'msg': '房间任务已被其他请求更新，请重试'})
+                return
             worker = StreamWorker(room_no, device_id, rtsp_url, config)
             worker.start()
             workers[room_no] = worker
 
-        self._json_response({'code': 1, 'msg': 'Started'})
+        self._json_response({'code': 1, 'msg': 'Started', 'startTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
 
     def _handle_stop(self, data):
         rtsp_url = data.get('rtspUrl', '')
         with workers_lock:
             for room_no, worker in list(workers.items()):
                 if worker.rtsp_url == rtsp_url:
-                    worker.stop()
-                    del workers[room_no]
-                    self._json_response({'code': 1, 'msg': 'Stopped'})
-                    return
-        self._json_response({'code': 0, 'msg': '房间未找到'})
+                    break
+            else:
+                self._json_response({'code': 0, 'msg': '房间未找到'})
+                return
+
+        if not worker.stop(timeout=5.0):
+            self._json_response({'code': 0, 'msg': '任务停止超时'})
+            return
+        with workers_lock:
+            if workers.get(room_no) is worker:
+                del workers[room_no]
+        self._json_response({'code': 1, 'msg': 'Stopped', 'endTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
 
     def _handle_config(self, data):
         api_url = data.get('api_url', '')
@@ -135,7 +134,13 @@ class DemoHandler(BaseHTTPRequestHandler):
         with workers_lock:
             for room_no, worker in workers.items():
                 if worker.rtsp_url == rtsp_url:
-                    self._json_response({'code': 1, 'msg': 'running', 'room_no': room_no})
+                    status = worker.get_status()
+                    self._json_response({
+                        'code': 1 if status['alive'] else 0,
+                        'msg': status['status'],
+                        'room_no': room_no,
+                        'last_error': status['last_error'],
+                    })
                     return
         self._json_response({'code': 0, 'msg': '未找到'})
 
@@ -143,11 +148,14 @@ class DemoHandler(BaseHTTPRequestHandler):
         with workers_lock:
             rooms = {}
             for room_no, worker in workers.items():
+                worker_status = worker.get_status()
                 rooms[room_no] = {
                     'room_no': room_no,
                     'device_id': worker.device_id,
                     'rtsp_url': worker.rtsp_url,
-                    'status': 'running'
+                    'status': worker_status['status'],
+                    'alive': worker_status['alive'],
+                    'last_error': worker_status['last_error']
                 }
             return {'code': 200, 'data': rooms}
 
@@ -228,30 +236,30 @@ for(var r in s){var v=s[r];
 if(!loaded[r]){
 var h='<div class="card" id="card-'+r+'"><div class="card-hdr"><span class="t">Room '+r+'</span><span class="i" id="info-'+r+'"></span></div>';
 h+='<div class="vid"><img id="stream-'+r+'" src="/video/'+r+'"><div class="ov"><div class="hud">';
-h+='<div class="hi"><div class="hl">GAZE</div><div class="hv" id="gaze-'+r+'">--</div></div>';
-h+='<div class="hi"><div class="hl">EYE</div><div class="hv" id="eye-'+r+'">--</div></div>';
-h+='<div class="hi"><div class="hl">DROWSY</div><div class="hv" id="drowsy-'+r+'">--</div></div>';
-h+='<div class="hi"><div class="hl">EAR</div><div class="hv" id="ear-'+r+'">--</div></div>';
+h+='<div class="hi"><div class="hl">HEAD DOWN</div><div class="hv" id="hd-'+r+'">--</div></div>';
+h+='<div class="hi"><div class="hl">RATIO RISE</div><div class="hv" id="rise-'+r+'">--</div></div>';
 h+='<div class="hi"><div class="hl">FACE</div><div class="hv" id="face-'+r+'">--</div></div>';
 h+='<div class="hi"><div class="hl">FPS</div><div class="hv" id="fps-'+r+'">--</div></div>';
+h+='<div class="hi"><div class="hl">PUSH OK</div><div class="hv" id="ok-'+r+'">0</div></div>';
+h+='<div class="hi"><div class="hl">PUSH FAILED</div><div class="hv" id="fail-'+r+'">0</div></div>';
 h+='</div></div></div><div class="bar">';
 h+='<div class="st"><div class="sn" id="s1-'+r+'">0</div><div class="sl">FPS</div></div>';
 h+='<div class="st"><div class="sn" id="s2-'+r+'">0</div><div class="sl">FRAMES</div></div>';
 h+='<div class="st"><div class="sn" id="s3-'+r+'">0</div><div class="sl">ALERTS</div></div>';
-h+='<div class="st"><div class="sn" id="s4-'+r+'">--</div><div class="sl">EAR</div></div>';
+h+='<div class="st"><div class="sn" id="s4-'+r+'">--</div><div class="sl">RATIO RISE</div></div>';
 h+='</div></div>';
 document.getElementById('rooms').innerHTML+=h;loaded[r]=true;}
 var el;
-el=document.getElementById('gaze-'+r);if(el){el.textContent=v.gaze||'--';el.className='hv '+(v.gaze==='CENTER'?'g':'y');}
-el=document.getElementById('eye-'+r);if(el){el.textContent=v.eye_state||'--';el.className='hv '+(v.eye_state==='OPEN'?'g':(v.eye_state==='CLOSED'?'r':'y'));}
-el=document.getElementById('drowsy-'+r);if(el){el.textContent=v.drowsy?'YES':'NO';el.className='hv '+(v.drowsy?'r':'g');}
-el=document.getElementById('ear-'+r);if(el){el.textContent=v.ear||'--';}
+el=document.getElementById('hd-'+r);if(el){el.textContent=v.head_down?'YES':'NO';el.className='hv '+(v.head_down?'r':'g')};
+el=document.getElementById('rise-'+r);if(el){el.textContent=v.ratio_rise==null?'--':v.ratio_rise;el.className='hv '+(v.head_down?'r':'g')};
 el=document.getElementById('face-'+r);if(el){el.textContent=v.face_detected?'OK':'NONE';el.className='hv '+(v.face_detected?'g':'r');}
 el=document.getElementById('fps-'+r);if(el){el.textContent=v.fps||0;}
+el=document.getElementById('ok-'+r);if(el){el.textContent=v.push_successes||0;el.className='hv g';}
+el=document.getElementById('fail-'+r);if(el){el.textContent=v.push_failures||0;el.className='hv '+(v.push_failures?'r':'g');}
 el=document.getElementById('s1-'+r);if(el){el.textContent=v.fps||0;}
 el=document.getElementById('s2-'+r);if(el){el.textContent=v.frames||0;}
-el=document.getElementById('s3-'+r);if(el){el.textContent=v.pushes||0;}
-el=document.getElementById('s4-'+r);if(el){el.textContent=v.ear||'--';}
+el=document.getElementById('s3-'+r);if(el){el.textContent=v.detected_count||0;}
+el=document.getElementById('s4-'+r);if(el){el.textContent=v.ratio_rise==null?'--':v.ratio_rise;}
 el=document.getElementById('info-'+r);if(el){el.textContent='FPS: '+(v.fps||0)+' | Frames: '+(v.frames||0);}
 }
 document.getElementById('dbg').innerHTML='OK | '+d.time;
@@ -277,7 +285,3 @@ def start_demo_server(port=None):
 
 if __name__ == '__main__':
     start_demo_server()
-
-
-
-

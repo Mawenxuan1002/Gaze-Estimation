@@ -3,6 +3,10 @@ __pycache__
 *.zip
 *.tar
 *.tar.gz
+*.bak
+*.c
+.idea
+.env*
 Dockerfile
 docker-compose.yml
 build.sh

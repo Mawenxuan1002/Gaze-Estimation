@@ -77,7 +77,7 @@ POST http://IP:8085/analyze_start
 Content-Type: application/json
 
 {
-    "rtspUrl": "rtsp://192.168.1.90:8554/live/camera_1_ch1",
+    "rtspUrl": "rtsp://camera.example.com/live/camera_1_ch1",
     "key": "{\"roomNo\":\"001\",\"deviceId\":\"2\"}"
 }
 ```
@@ -94,7 +94,7 @@ POST http://IP:8085/analyze_end
 Content-Type: application/json
 
 {
-    "rtspUrl": "rtsp://192.168.1.90:8554/live/camera_1_ch1"
+    "rtspUrl": "rtsp://camera.example.com/live/camera_1_ch1"
 }
 ```
 
@@ -110,7 +110,7 @@ POST http://IP:8085/analyze_status
 Content-Type: application/json
 
 {
-    "rtspUrl": "rtsp://192.168.1.90:8554/live/camera_1_ch1"
+    "rtspUrl": "rtsp://camera.example.com/live/camera_1_ch1"
 }
 ```
 
@@ -223,15 +223,15 @@ curl http://localhost:8085/api/rooms
 # 房间1
 curl -X POST http://localhost:8085/analyze_start \
   -H "Content-Type: application/json" \
-  -d '{"rtspUrl":"rtsp://192.168.1.90:8554/live/camera_1_ch1","key":"{\"roomNo\":\"001\",\"deviceId\":\"2\"}"}'
+  -d '{"rtspUrl":"rtsp://camera.example.com/live/camera_1_ch1","key":"{\"roomNo\":\"001\",\"deviceId\":\"2\"}"}'
 
 # 房间2
 curl -X POST http://localhost:8085/analyze_start \
   -H "Content-Type: application/json" \
-  -d '{"rtspUrl":"rtsp://192.168.1.90:8554/live/camera_2_ch1","key":"{\"roomNo\":\"002\",\"deviceId\":\"3\"}"}'
+  -d '{"rtspUrl":"rtsp://camera.example.com/live/camera_2_ch1","key":"{\"roomNo\":\"002\",\"deviceId\":\"3\"}"}'
 
 # 房间3
 curl -X POST http://localhost:8085/analyze_start \
   -H "Content-Type: application/json" \
-  -d '{"rtspUrl":"rtsp://192.168.1.90:8554/live/camera_3_ch1","key":"{\"roomNo\":\"003\",\"deviceId\":\"4\"}"}'
+  -d '{"rtspUrl":"rtsp://camera.example.com/live/camera_3_ch1","key":"{\"roomNo\":\"003\",\"deviceId\":\"4\"}"}'
 ```

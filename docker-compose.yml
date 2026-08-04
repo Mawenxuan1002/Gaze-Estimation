@@ -1,4 +1,4 @@
-﻿version: '3.8'
+version: '3.8'
 
 services:
   gaze-tracker:
@@ -12,7 +12,6 @@ services:
       - ./outputs:/app/outputs
     environment:
       - DEMO_PORT=8081
-      - API_URL=http://192.168.1.90:8081
-      - GAZE_USERNAME=admin
-      - GAZE_PASSWORD=admin123
-    network_mode: host
+      - API_URL=${API_URL:-http://platform.example.com:8081}
+      - GAZE_USERNAME=${GAZE_USERNAME:-admin}
+      - GAZE_PASSWORD=${GAZE_PASSWORD:-}

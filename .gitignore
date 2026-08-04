@@ -4,3 +4,9 @@ outputs/
 status/
 calib_config.json
 *.tar
+*.bak
+*.c
+.idea/
+rooms.local.json
+.env
+.env.*

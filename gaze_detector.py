@@ -22,6 +22,8 @@ from typing import Optional
 import cv2
 import mediapipe as mp
 import numpy as np
+
+from head_pose import rotation_matrix_to_head_angles
 from mediapipe.tasks.python import BaseOptions
 from mediapipe.tasks.python.vision import (
     FaceLandmarker,
@@ -61,6 +63,7 @@ class FrameResult:
     landmarks: Optional[np.ndarray] = None
     head_yaw: float = 0.0
     head_pitch: float = 0.0
+    head_down_ratio: float = 0.0
 
 
 # 左眼 6 点 (EAR)
@@ -154,15 +157,27 @@ def estimate_head_pose(lm, frame_w, frame_h) -> tuple:
         return (0.0, 0.0)
 
     rmat, _ = cv2.Rodrigues(rvec)
-    sy = np.sqrt(rmat[0, 0]**2 + rmat[1, 0]**2)
-    if sy < 1e-6:
-        yaw   = np.arctan2(-rmat[1, 2], rmat[1, 1])
-        pitch = np.arctan2(-rmat[2, 0], sy)
-    else:
-        yaw   = np.arctan2(rmat[1, 0], rmat[0, 0])
-        pitch = np.arctan2(-rmat[2, 0], sy)
+    yaw, pitch, _roll = rotation_matrix_to_head_angles(rmat)
+    return yaw, pitch
 
-    return float(np.degrees(yaw)), float(np.degrees(pitch))
+def compute_head_down_ratio(lm) -> float:
+    """基于面部关键点几何比例的低头检测。
+    返回鼻尖到眼睛中点的垂直距离 / 人脸宽度。
+    根据当前摄像头实测，低头时该比例相对正视基准增大。
+    """
+    nose_tip = _lm_xy(lm, 1)
+    left_eye = _lm_xy(lm, 33)
+    right_eye = _lm_xy(lm, 263)
+    left_face = _lm_xy(lm, 234)
+    right_face = _lm_xy(lm, 454)
+
+    eye_mid_y = (left_eye[1] + right_eye[1]) / 2.0
+    face_width = _dist(left_face, right_face)
+
+    if face_width < 1e-8:
+        return 0.0
+
+    return float((nose_tip[1] - eye_mid_y) / face_width)
 
 
 def classify_gaze_from_offset(dx, dy, h_thresh=0.25, v_thresh=0.30):
@@ -371,6 +386,9 @@ class GazeTracker:
         yaw, pitch = estimate_head_pose(lm, w, h)
         result_frame.head_yaw = yaw
         result_frame.head_pitch = pitch
+
+        # 基于几何比例的低头检测
+        result_frame.head_down_ratio = compute_head_down_ratio(lm)
         dx_comp = dx + yaw * 0.003
         dy_comp = dy + pitch * 0.003
 

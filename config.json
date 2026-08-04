@@ -1,14 +1,14 @@
 {
-    "width":  640,
-    "earThreshold":  0.2,
-    "apiUrl":  "http://192.168.1.90:8081",
-    "username":  "admin",
-    "pushInterval":  10,
-    "drowsyDuration":  2,
-    "password":  "admin123",
-    "rtsp":  "rtsp://192.168.1.97:8554/live/wykj001",
-    "awayDuration":  3,
-    "camera":  0,
-    "roomNo":  "002",
-    "deviceId":  "5"
+  "width": 640,
+  "earThreshold": 0.2,
+  "apiUrl": "http://platform.example.com:8081",
+  "username": "admin",
+  "password": "",
+  "pushInterval": 10,
+  "rtsp": "rtsp://camera.example.com/live/stream",
+  "awayDuration": 3,
+  "drowsyDuration": 2,
+  "camera": 0,
+  "roomNo": "001",
+  "deviceId": "1"
 }

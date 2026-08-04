@@ -1,15 +1,21 @@
-﻿{
-    "global": {
-        "ear_threshold": 0.2,
-        "width": 640,
-        "push_interval": 10,
-        "api_url": "http://192.168.1.90:8081",
-        "username": "admin",
-        "password": "admin123",
-        "away_duration": 3.0,
-        "drowsy_duration": 2.0
-    },
-    "rooms": [
-        {"room_no": "002", "device_id": "5", "rtsp_url": "rtsp://192.168.1.97:8554/live/wykj001"}
-    ]
+{
+  "global": {
+    "head_down_ratio_delta": 0.10,
+    "head_down_duration": 30.0,
+    "head_down_side_yaw_start": 15.0,
+    "head_down_side_yaw_full": 45.0,
+    "head_down_side_threshold_scale": 0.50,
+    "width": 640,
+    "push_interval": 10,
+    "api_url": "http://platform.example.com:8081",
+    "username": "admin",
+    "password": ""
+  },
+  "rooms": [
+    {
+      "room_no": "001",
+      "device_id": "1",
+      "rtsp_url": "rtsp://camera.example.com/live/stream"
+    }
+  ]
 }
